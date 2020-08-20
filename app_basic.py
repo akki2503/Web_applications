@@ -43,7 +43,9 @@ app.layout = html.Div(
                                          dcc.Dropdown(id='optionselector', options=get_options(options),
                                                       value='grayscale',
                                                       style={'backgroundColor': '#1E1E1E'},
-                                                      className='optionselector'
+                                                      className='optionselector',
+                                                      clearable=False
+                                                    
                                                       ),
                                      ],
                                      style={'color': '#1E1E1E'})
@@ -67,11 +69,11 @@ def hsv(image):
               [Input('optionselector', 'value')])
 def update_graph(selected_dropdown_value):
     image = cv2.imread('data/IMG_20190406_135457.jpg')
-    for option in selected_dropdown_value:
-        if option=='grayscale':
-            img = grayscale(image)
-        else:
-            img = hsv(image)
+
+    if selected_dropdown_value=='grayscale':
+        img = grayscale(image)
+    if selected_dropdown_value=='hsv':
+        img = hsv(image)
 
     im_pil = Image.fromarray(img)
     buff = _BytesIO()
@@ -87,10 +89,13 @@ def update_graph(selected_dropdown_value):
                                             'xaxis': {
                                                         'range': (0, 400),
                                                         'scaleanchor': 'y',
-                                                        'scaleratio': 1
+                                                        'scaleratio': 1,
+                                                        'showgrid': False
                                                     },
                                             'yaxis': {
-                                                        'range': (0, 400)
+                                                        'range': (0, 400),
+                                                        'showgrid': False
+
                                                     },
                                             'images': [{
                                                         'xref': 'x',

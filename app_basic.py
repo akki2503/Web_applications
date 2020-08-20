@@ -7,6 +7,8 @@ import pandas as pd
 import cv2
 import base64
 from dash.dependencies import Input, Output
+from PIL import Image
+from io import BytesIO as _BytesIO
 
 # Load data
 df = pd.read_csv('data/stockdata2.csv', index_col=0, parse_dates=True)
@@ -40,7 +42,7 @@ app.layout = html.Div(
                                      className='div-for-dropdown',
                                      children=[
                                          dcc.Dropdown(id='optionselector', options=get_options(options),
-                                                      multi=True, value=['grayscale'],
+                                                      value='grayscale',
                                                       style={'backgroundColor': '#1E1E1E'},
                                                       className='optionselector'
                                                       ),
@@ -48,14 +50,11 @@ app.layout = html.Div(
                                      style={'color': '#1E1E1E'})
                                 ]
                              ),
-                    html.Div(className='eight columns div-for-charts bg-grey',
+                    html.Div(id='image', className='eight columns div-for-charts bg-grey',
                              children=[
-                                 html.Img(src='data:image;base64,{}'.format('image'))
-                             ])
-                              ])
-        ]
-
-)
+                                dcc.Graph(id='interactive-image', style={'height': '80vh'})])
+                                #  dcc.Graph(id='image', config={'displayModeBar': False}, animate=True)
+                 ])])
 
 def grayscale(image):
     img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -66,16 +65,20 @@ def hsv(image):
     return img
 
 # Callback for timeseries price
-@app.callback(Output('image', 'encoded_image'),
+@app.callback(Output('image', 'children'),
               [Input('optionselector', 'value')])
-def update_graph(selected_dropdown_value, image):
+def update_graph(selected_dropdown_value):
     # trace1 = []
     df_sub = df
+    image = cv2.imread('data/IMG_20190406_135457.jpg')
+    HTML_IMG_SRC_PARAMETERS = 'data:image/png;base64, '
     for option in selected_dropdown_value:
         if option=='grayscale':
             img = grayscale(image)
+            cv2.imwrite('/assets/grayscale.jpg', img)
         else:
             img = hsv(image)
+            cv2.imwrite('/assets/hsv.jpg', img)
         
         # fig = go.Figure()
         # fig.add_layout_image(img)
@@ -87,26 +90,41 @@ def update_graph(selected_dropdown_value, image):
                                 #  textposition='bottom center'))
         # traces = [trace1]
         # data = [val for sublist in traces for val in sublist]
-        # figure = {'data': img,
-        #         'layout': go.Layout(
-        #             colorway=["#5E0DAC", '#FF4F00', '#375CB1', '#FF7400', '#FFF400', '#FF0056'],
-        #             template='plotly_dark',
-        #             paper_bgcolor='rgba(0, 0, 0, 0)',
-        #             plot_bgcolor='rgba(0, 0, 0, 0)',
-        #             margin={'b': 15},
-        #             hovermode='x',
-        #             autosize=True,
-        #             title={'text': 'Stock Prices', 'font': {'color': 'white'}, 'x': 0.5},
-        #             xaxis={'range': [df_sub.index.min(), df_sub.index.max()]},
-        #         ),
+        im_pil = Image.fromarray(img)
+        buff = _BytesIO()
+        im_pil.save(buff, format='png')
+        encoded = base64.b64encode(buff.getvalue()).decode("utf-8")
 
-        #         }
-        encoded_image = base64.b64encode(img)
-        # fig = px.imshow(img)
-        # figure = fig.show()
+    return dcc.Graph(
+                        id='interactive-image',
+                                figure={
+                                    'data': [],
+                                    'layout': {
+                                        'margin': go.layout.Margin(l=40, b=40, t=26, r=10),
+                                        'xaxis': {
+                                            'range': (0, 400),
+                                            'scaleanchor': 'y',
+                                            'scaleratio': 1
+                                        },
+                                        'yaxis': {
+                                            'range': (0, 400)
+                                        },
+                                        'images': [{
+                                            'xref': 'x',
+                                            'yref': 'y',
+                                            'x': 0,
+                                            'y': 0,
+                                            'yanchor': 'bottom',
+                                            'sizing': 'stretch',
+                                            'sizex': 400,
+                                            'sizey': 400,
+                                            'layer': 'below',
+                                            'source': 'data:image/png;base64, ' + encoded,
+                                        }],
+                                    }
+                                }
 
-    return encoded_image
-
+                                )
 
 if __name__ == '__main__':
     app.run_server(debug=True)
